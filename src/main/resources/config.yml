@@ -1,0 +1,23 @@
+# YinwuVaultFix —— 让试炼宝库（trial vault）的玩家黑名单失效
+# 改完执行 /vaultfix reload 生效（本插件不做任何缓存，reload 即生效），或重启服务器。
+
+# 生效的宝库类型：both = 普通宝库 + 不祥宝库；normal = 只普通；ominous = 只不祥
+vault-types: both
+
+# 点击宝库时，如果它因为黑名单被冻成 INACTIVE（变暗），先把方块状态拨回 ACTIVE，
+# 好让"这一次"点击就能插钥匙。
+# true（推荐）：哪怕这个宝库是装插件之前就被开过的，第一次点击也能开。
+# false       ：被冻住的宝库需要点第二次（第一次只清名单，下一 tick 宝库自己变回 ACTIVE）。
+force-active-on-click: true
+
+# 宝库状态变化时清空它的黑名单。
+# 原版会把"已经领过奖的玩家"从 connectedPlayers 里排除，附近玩家都开过时宝库就变暗；
+# 清掉名单后它一直保持 ACTIVE，随时可以再开、也不会在玩家眼里变暗。
+clear-on-state-change: true
+
+# 生效权限：留空 = 所有玩家都享受；填 yinwu.vaultfix.use = 只有拥有该权限的玩家享受。
+# （填了权限时，"状态变化清名单"也只会清掉在线且有该权限的玩家。）
+permission: ""
+
+# 控制台调试日志：每次清黑名单都打印一行
+debug: false

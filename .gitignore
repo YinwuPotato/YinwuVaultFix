@@ -1,0 +1,15 @@
+# 构建产物（成品 jar 走 GitHub Release，不进仓库树）
+out/
+build/
+*.class
+*.jar
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

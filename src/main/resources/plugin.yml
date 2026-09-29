@@ -1,0 +1,20 @@
+name: YinwuVaultFix
+version: 1.0.0
+main: io.yinwu.vaultfix.VaultFixPlugin
+api-version: '26.3'
+folia-supported: true
+authors: [Yinwu]
+description: 让试炼宝库的"开过就不再给"玩家黑名单失效，宝库可反复开启
+commands:
+  vaultfix:
+    description: YinwuVaultFix 管理命令
+    usage: /vaultfix <reload|inspect>
+    aliases: [vf]
+    permission: yinwu.vaultfix.admin
+permissions:
+  yinwu.vaultfix.admin:
+    description: 允许使用 /vaultfix 命令
+    default: op
+  yinwu.vaultfix.use:
+    description: config.yml 里 permission 填这个时，只有拥有它的玩家享受黑名单失效
+    default: true
