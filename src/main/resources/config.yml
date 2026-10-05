@@ -4,16 +4,20 @@
 # 生效的宝库类型：both = 普通宝库 + 不祥宝库；normal = 只普通；ominous = 只不祥
 vault-types: both
 
-# 点击宝库时，如果它因为黑名单被冻成 INACTIVE（变暗），先把方块状态拨回 ACTIVE，
-# 好让"这一次"点击就能插钥匙。
-# true（推荐）：哪怕这个宝库是装插件之前就被开过的，第一次点击也能开。
-# false       ：被冻住的宝库需要点第二次（第一次只清名单，下一 tick 宝库自己变回 ACTIVE）。
-force-active-on-click: true
+# 取消【变成 INACTIVE】这一步：宝库变暗是因为原版把已获奖玩家从 connectedPlayers 里排除，
+# 取消这次转变就能让它保持 ACTIVE、随时可开，也不会在玩家眼里变暗。
+#
+# ⚠ 绝不要改成【点击时硬把方块状态拨成 ACTIVE】—— 那会让点击骗过状态检查，但方块实体还在
+#   EJECTING/UNLOCKING 循环里，结果是【钥匙被消耗、宝库不给奖励】（1.0.0 的 bug，实测连吞 5 把）。
+keep-active: true
 
 # 宝库状态变化时清空它的黑名单。
 # 原版会把"已经领过奖的玩家"从 connectedPlayers 里排除，附近玩家都开过时宝库就变暗；
-# 清掉名单后它一直保持 ACTIVE，随时可以再开、也不会在玩家眼里变暗。
-clear-on-state-change: true
+# 【1.0.2 新行为】清理范围 = 全部玩家，但必须等「当前钥匙的产出结束」：
+#   点击时若宝库空闲(ACTIVE)   → 立刻清空全部黑名单
+#   点击时若正在产出(EJECTING/UNLOCKING) → 只记一个待清理标记，等它回到 ACTIVE 再清
+#   （在产出过程中改数据会扰乱原版流程 → 表现为「第一次能开，之后永远开不出东西且钥匙不扣」）
+# 全流程不给玩家任何提示。
 
 # 生效权限：留空 = 所有玩家都享受；填 yinwu.vaultfix.use = 只有拥有该权限的玩家享受。
 # （填了权限时，"状态变化清名单"也只会清掉在线且有该权限的玩家。）
@@ -21,3 +25,5 @@ permission: ""
 
 # 控制台调试日志：每次清黑名单都打印一行
 debug: false
+auto-unfreeze: true
+unfreeze-threshold-ticks: 37200

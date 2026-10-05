@@ -116,3 +116,64 @@ jar --create --file yinwu-vaultfix-1.0.0.jar -C out . -C src\main\resources .
 删除 `Van\plugins\yinwu-vaultfix-1.0.0.jar`（`Van\plugins\YinwuVaultFix\` 配置目录可留可删）→ 重启 Van。行为立刻恢复成原版：每个玩家对每个宝库只能领一次。
 
 已开过的宝库不会因为卸载插件而"复原"——插件只是不再清名单而已；名单里当时有谁，就还是只有谁被拒。
+
+
+---
+
+# 版本历史与四个坑（每个都有线上日志实锤）
+
+> ⚠️ 这一节是**防回退**用的。下面四条任意一条被"优化"掉，都会重现对应的 bug。
+
+## 状态机（原版四态循环）
+
+```
+ACTIVE ──插钥匙成功──→ EJECTING ──玩家拿走奖励──→ INACTIVE ──有资格玩家靠近──→ ACTIVE
+                                                        ↑
+                            注意：产出流程【必须】经过 EJECTING→INACTIVE
+```
+
+## 原版判定链（`VaultBlockEntity$Server#tryInsertKey`，字节码核对）
+
+```java
+canEjectReward(config, state)         // keyItem 非空 且 state != INACTIVE
+isValidToInsert(config, itemStack)    // 同物品同组件 且 数量 >= 配置数量
+serverData.hasRewardedPlayer(player)  // 命中 → playInsertFailSound 然后 return（不扣钥匙）
+items = resolveItemsToEject(...)      // = table.getRandomItems(params)，就是一次战利品表 roll
+if (items.isEmpty()) return;          // roll 空 → 什么都不做【且不扣钥匙】
+config.keyItem().consume(...);        // 扣钥匙在这里
+serverData.addToRewardedPlayers(...); // 记名单在最后（所以"没记名单"= 根本没走到这一步）
+```
+
+## 四个坑
+
+| 版本 | 当时的做法 | 现象 | 根因 |
+|---|---|---|---|
+| 1.0.0 | 点击时**硬把 blockstate 拨成 ACTIVE** | **连续 5 把钥匙被吞、宝库不吐奖励** | 骗过了 `canEjectReward`，但方块实体还在 EJECTING/UNLOCKING 循环里 |
+| 1.0.1 | **产出过程中就清黑名单** | 第一次能开，之后**永远**开不出东西（钥匙不扣） | 在 EJECTING/UNLOCKING 里改宝库数据，扰乱了原版产出流程 |
+| 1.0.3 | 拦下**所有** `→INACTIVE` 转变 | 宝库**永远卡在 EJECTING**（实测 1 分钟以上） | `EJECTING→INACTIVE` 是产出循环的必经之路，拦掉就卡死 |
+| 1.0.4 | 只处理 ACTIVE 与产出中，**漏了 INACTIVE** | 暗着的宝库**怎么点都没反应** | 玩家在黑名单里 → 永远没资格 → 宝库永远暗 → 点击被"不处理" |
+
+## 当前（1.0.4）的正确行为
+
+```
+右键 → 读 blockstate 状态
+  ├─ ACTIVE          → 立刻清空全部黑名单（原版接着产出）
+  ├─ INACTIVE        → 立刻清空全部黑名单（玩家恢复资格 → 下一 tick 宝库自己亮起）
+  └─ EJECTING/UNLOCK → 只记「待清理」标记，【绝不动数据】
+                       等状态【离开】产出态（→ACTIVE 或 →INACTIVE）时执行清理
+
+keep-active：只拦「空闲 ACTIVE → INACTIVE」（玩家在附近时不变暗）
+             绝不拦 EJECTING/UNLOCKING → INACTIVE
+玩家提示：无（规格要求）
+```
+
+## 诊断手段（排查同类问题首选）
+
+```
+/vaultfix inspect    → 状态 / 黑名单人数+UUID / 在场玩家 / 钥匙 /
+                       展示位物品 / 战利品表 / 下次状态更新 /
+                       试 roll 一次（用 Bukkit API 直接 roll，只读）/
+                       待清理标记
+                     报告【同时写进服务端日志】(玩家消息不进日志，远端排查靠它)
+debug: true          → 点击/待清理/拦下 的详细日志（已限流：每键 30 秒一条）
+```

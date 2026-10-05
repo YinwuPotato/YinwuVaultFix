@@ -1,5 +1,5 @@
 name: YinwuVaultFix
-version: 1.0.0
+version: 1.1.0
 main: io.yinwu.vaultfix.VaultFixPlugin
 api-version: '26.3'
 folia-supported: true
